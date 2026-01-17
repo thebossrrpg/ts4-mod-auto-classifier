@@ -262,9 +262,10 @@ class NotionSearcher:
                     logger.warning(f"Erro ao processar página: {e}")
                     continue
             
-            return results
+    return results   # ← Este return fica com a indentação atual (dentro do try)
 
-            def search(self, query: str) -> List[Dict]:
+    # Aqui começa o próximo método, sem indentação extra
+    def search(self, query: str) -> List[Dict]:
         """
         Busca inteligente que decide automaticamente o tipo de busca.
         
@@ -311,8 +312,6 @@ class NotionSearcher:
                         'folder': folder,
                         'priority': priority
                     }]
-                                except Exception as e:
-                                                    logger.error(f"Erro ao buscar detalhes da página: {e}")
         
         # Caso contrário, faz busca fuzzy por nome
         return self.fuzzy_search(query)
