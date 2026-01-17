@@ -262,11 +262,10 @@ class NotionSearcher:
                     logger.warning(f"Erro ao processar página: {e}")
                     continue
             
-    return results   # ← Este return fica com a indentação atual (dentro do try)
+                    return results   # ← Este return fica com a indentação atual (dentro do try)
 
     # Aqui começa o próximo método, sem indentação extra
-    def search(self, query: str) -> List[Dict]:
-        """
+            def search(self, query: str) -> List[Dict]: """
         Busca inteligente que decide automaticamente o tipo de busca.
         
         Args:
@@ -276,8 +275,8 @@ class NotionSearcher:
             Lista de resultados encontrados
         """
         # Se parece uma URL, tenta busca por URL
-        if query.startswith('http://') or query.startswith('https://'):
-            page_id = self.search_by_url(query)
+            if query.startswith('http://') or query.startswith('https://'):
+                page_id = self.search_by_url(query)
             if page_id:
                 # Busca detalhes da página encontrada
                 try:
@@ -314,5 +313,4 @@ class NotionSearcher:
                     }]
         
         # Caso contrário, faz busca fuzzy por nome
-        return self.fuzzy_search(query)
-            
+                    return self.fuzzy_search(query)
