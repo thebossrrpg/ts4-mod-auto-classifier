@@ -252,6 +252,12 @@ class NotionSearcher:
             logger.error(f"Erro na busca fuzzy por '{query}': {e}")
             return []
 
+            return results  # ← agora fora do for loop e do try principal
+
+        except Exception as e:
+            logger.error(f"Erro na busca fuzzy por '{query}': {e}")
+            return []
+
     def search(self, query: str) -> List[Dict]:
         """
         Busca inteligente que decide automaticamente o tipo de busca.
