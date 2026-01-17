@@ -275,33 +275,31 @@ class NotionSearcher:
         Returns:
             Lista de resultados encontrados
         """
-        # Se parece uma URL, tenta busca por URL
         if query.startswith('http://') or query.startswith('https://'):
             page_id = self.search_by_url(query)
             if page_id:
-                # Busca detalhes da página encontrada
                 try:
                     page = self.client.pages.retrieve(page_id)
                     properties = page['properties']
                     
                     name = ""
-                    if 'Nome' in properties and properties['Nome']['title']:
+                    if 'Nome' in properties and properties['Nome'].get('title'):
                         name = properties['Nome']['title'][0]['plain_text']
                     
                     creator = ""
-                    if 'Criador' in properties and properties['Criador']['rich_text']:
+                    if 'Criador' in properties and properties['Criador'].get('rich_text'):
                         creator = properties['Criador']['rich_text'][0]['plain_text']
                     
                     url = ""
-                    if 'Link' in properties and properties['Link']['url']:
+                    if 'Link' in properties and properties['Link'].get('url'):
                         url = properties['Link']['url']
                     
                     folder = ""
-                    if 'Pasta' in properties and properties['Pasta']['select']:
+                    if 'Pasta' in properties and properties['Pasta'].get('select'):
                         folder = properties['Pasta']['select']['name']
                     
                     priority = ""
-                    if 'Prioridade' in properties and properties['Prioridade']['select']:
+                    if 'Prioridade' in properties and properties['Prioridade'].get('select'):
                         priority = properties['Prioridade']['select']['name']
                     
                     return [{
@@ -314,8 +312,8 @@ class NotionSearcher:
                     }]
                 
                 except Exception as e:
-                    logger.error(f"Erro ao recuperar página {page_id}: {e}")
-                    return []  # ou raise, dependendo do que você quer
+                    logger.error(f"Erro ao recuperar detalhes da página {page_id}: {str(e)}")
+                    return []  # Retorna vazio em caso de falha para não quebrar o app
 
-        # Caso contrário, faz busca fuzzy por nome
+        # Se não for URL ou falhou na busca exata, usa busca fuzzy
         return self.fuzzy_search(query)
