@@ -141,6 +141,14 @@ with tab2:
                         if st.button("💾 Salvar no Notion", type="primary"):
                             with st.spinner("Salvando..."):
                                 try:
+                                    searcher = NotionSearcher(notion_api_key, database_id)
+                                    
+                                    # 🔍 VERIFICA DUPLICATA
+                                    existing_page_id = searcher.search_by_url(mod_info['url'])
+                                    if existing_page_id:
+                                        st.warning("⚠️ Esse mod já existe no Notion.")
+                                        st.stop()
+
                                     client = NotionClient(notion_api_key, database_id)
                                     
                                     page_data = {
@@ -152,8 +160,12 @@ with tab2:
                                         'notes': f"Confiança: {classification['confidence']*100:.0f}%"
                                     }
                                     
-                                    result = client.create_page(page_data)
+                                    client.create_page(page_data)
                                     st.success("✅ Mod salvo no Notion com sucesso!")
+                                
+                                except Exception as e:
+                                st.error(f"Erro ao salvar: {str(e)}")
+
                                     
                                 except Exception as e:
                                     st.error(f"Erro ao salvar: {str(e)}")
