@@ -318,6 +318,3 @@ class NotionSearcher:
         # Caso contrário, faz busca fuzzy por nome
         return self.fuzzy_search(query)
             
-        except Exception as e:
-            logger.error(f"Erro na busca fuzzy: {e}")
-            return []
