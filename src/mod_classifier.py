@@ -1,159 +1,166 @@
-"""Classificador de mods com análise de prioridade."""
+"""Classificador de mods baseado na régua oficial v3.0 de prioridades."""
 
 import logging
-from typing import Dict, List, Optional
-import re
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
 
 class ModClassifier:
-    """Classifica mods baseado em palavras-chave e regras."""
-    
-    # Mapeamento de palavras-chave para prioridades
-    KEYWORD_PRIORITIES = {
-        # Prioridade 0 - Must Have
-        "mccc": 0,
-        "mc command center": 0,
-        "ui cheats": 0,
-        "better exceptions": 0,
-        "basemental": 0,
-        
-        # Prioridade 1 - Core Gameplay
-        "gameplay": 1,
-        "career": 1,
-        "traits": 1,
-        "aspiration": 1,
-        "buff": 1,
-        "interaction": 1,
-        
-        # Prioridade 2 - Quality of Life
-        "autonomy": 2,
-        "faster": 2,
-        "improved": 2,
-        "better": 2,
-        "enhancement": 2,
-        
-        # Prioridade 3 - Enhancements
-        "cas": 3,
-        "build": 3,
-        "buy": 3,
-        "animation": 3,
-        "pose": 3,
-        
-        # Prioridade 4 - Optional/Aesthetic
-        "clothing": 4,
-        "hair": 4,
-        "skin": 4,
-        "makeup": 4,
-        "accessory": 4,
-        "decoration": 4,
-    }
-    
-    # Mapeamento de prioridades para pastas
+    """
+    Classifica mods do The Sims 4 segundo a régua v3.0:
+    Score = Remoção + Framework + Essencial
+    """
+
+    # =========================
+    # Mapeamentos oficiais
+    # =========================
+
     PRIORITY_FOLDER_MAP = {
-        0: "00 - Must Have",
-        1: "01 - Core Gameplay",
-        2: "02 - Quality of Life",
-        3: "03 - Enhancements",
-        4: "04 - Optional/Aesthetic"
+        0: "00 - Cosmético",
+        1: "01 - Core",
+        2: "02 - Sistemas",
+        3: "03 - Gameplay",
+        4: "04 - Persistente",
+        5: "05 - Volátil"
     }
-    
-    def classify_mod(self, mod_name: str, mod_description: str = "", 
-                     creator: str = "") -> Dict[str, any]:
+
+    # Heurísticas básicas (ajustáveis depois)
+    CORE_KEYWORDS = [
+        "framework", "core", "injector", "library", "dependency"
+    ]
+
+    SYSTEM_KEYWORDS = [
+        "career", "pregnancy", "relationship", "emotion", "calendar",
+        "finance", "death", "school", "education", "overhaul"
+    ]
+
+    GAMEPLAY_KEYWORDS = [
+        "event", "interaction", "buff", "trait", "skill",
+        "aspiration", "holiday", "festival", "object"
+    ]
+
+    COSMETIC_KEYWORDS = [
+        "override", "map", "loading screen", "font", "ui recolor"
+    ]
+
+    # =========================
+    # API pública
+    # =========================
+
+    def classify_mod(
+        self,
+        mod_name: str,
+        mod_description: str = "",
+        creator: str = ""
+    ) -> Dict[str, object]:
         """
-        Classifica um mod baseado em seu nome e descrição.
-        
-        Args:
-            mod_name: Nome do mod
-            mod_description: Descrição do mod
-            creator: Nome do criador
-            
-        Returns:
-            Dicionário com prioridade, pasta e confiança
+        Classifica um mod e retorna dados prontos para o Notion.
         """
         try:
-            # Combina texto para análise
-            full_text = f"{mod_name} {mod_description} {creator}".lower()
-            
-            # Detecta prioridade baseado em palavras-chave
-            detected_priority = self._detect_priority(full_text)
-            
-            # Mapeia para pasta
-            folder = self.PRIORITY_FOLDER_MAP.get(detected_priority, 
-                                                   "04 - Optional/Aesthetic")
-            
-            # Calcula confiança
-            confidence = self._calculate_confidence(full_text, detected_priority)
-            
+            text = f"{mod_name} {mod_description} {creator}".lower()
+
+            removal = self._estimate_removal_impact(text)
+            framework = self._detect_framework(text)
+            essential = self._estimate_essentiality(text)
+
+            score = removal + framework + essential
+            priority = self._score_to_priority(score)
+            folder = self.PRIORITY_FOLDER_MAP[priority]
+
+            confidence = min(score / 8, 1.0)
+
             result = {
-                "priority": detected_priority,
+                "priority": priority,   # SELECT numérico
                 "folder": folder,
-                "confidence": confidence,
+                "confidence": round(confidence, 2),
+                "score": score,
                 "mod_name": mod_name
             }
-            
-            logger.info(f"Mod classificado: {mod_name} -> {folder} (confiança: {confidence:.2f})")
+
+            logger.info(
+                f"Classificação: {mod_name} | "
+                f"score={score} -> priority={priority}"
+            )
             return result
-            
+
         except Exception as e:
-            logger.error(f"Erro ao classificar mod {mod_name}: {e}")
-            # Retorna classificação padrão em caso de erro
+            logger.error(f"Erro ao classificar mod '{mod_name}': {e}")
             return {
                 "priority": 4,
-                "folder": "04 - Optional/Aesthetic",
+                "folder": self.PRIORITY_FOLDER_MAP[4],
                 "confidence": 0.0,
+                "score": 0,
                 "mod_name": mod_name
             }
-    
-    def _detect_priority(self, text: str) -> int:
-        """Detecta prioridade baseado em palavras-chave."""
-        # Busca por palavras-chave
-        matches = []
-        for keyword, priority in self.KEYWORD_PRIORITIES.items():
-            if keyword in text:
-                matches.append(priority)
-        
-        # Retorna a menor prioridade encontrada (mais alta prioridade)
-        if matches:
-            return min(matches)
-        
-        # Padrão: Optional/Aesthetic
-        return 4
-    
-    def _calculate_confidence(self, text: str, priority: int) -> float:
-        """Calcula confiança da classificação."""
-        # Conta quantas palavras-chave da prioridade foram encontradas
-        relevant_keywords = [k for k, p in self.KEYWORD_PRIORITIES.items() 
-                            if p == priority]
-        
-        matches = sum(1 for keyword in relevant_keywords if keyword in text)
-        
-        if not relevant_keywords:
-            return 0.5  # Confiança média para classificação padrão
-        
-        # Confiança baseada em porcentagem de matches
-        confidence = min(matches / len(relevant_keywords) * 2, 1.0)
-        return confidence
-    
+
     def classify_batch(self, mods: List[Dict]) -> List[Dict]:
-        """
-        Classifica múltiplos mods.
-        
-        Args:
-            mods: Lista de dicionários com info dos mods
-            
-        Returns:
-            Lista de classificações
-        """
+        """Classifica vários mods de uma vez."""
         results = []
         for mod in mods:
-            name = mod.get("name", "")
-            description = mod.get("description", "")
-            creator = mod.get("creator", "")
-            
-            classification = self.classify_mod(name, description, creator)
-            results.append(classification)
-        
-        logger.info(f"Classificados {len(results)} mods em lote")
+            results.append(
+                self.classify_mod(
+                    mod.get("name", ""),
+                    mod.get("description", ""),
+                    mod.get("creator", "")
+                )
+            )
         return results
+
+    # =========================
+    # Heurísticas internas
+    # =========================
+
+    def _estimate_removal_impact(self, text: str) -> int:
+        """
+        Impacto de remoção (0–4)
+        """
+        if any(k in text for k in self.CORE_KEYWORDS):
+            return 4
+
+        if any(k in text for k in self.SYSTEM_KEYWORDS):
+            return 3
+
+        if any(k in text for k in self.GAMEPLAY_KEYWORDS):
+            return 2
+
+        if any(k in text for k in self.COSMETIC_KEYWORDS):
+            return 0
+
+        return 1  # padrão conservador
+
+    def _detect_framework(self, text: str) -> int:
+        """Detecta se é framework/core."""
+        return 1 if any(k in text for k in self.CORE_KEYWORDS) else 0
+
+    def _estimate_essentiality(self, text: str) -> int:
+        """
+        Essencialidade genérica (0–3)
+        """
+        if any(k in text for k in self.CORE_KEYWORDS):
+            return 3
+
+        if any(k in text for k in self.SYSTEM_KEYWORDS):
+            return 2
+
+        if any(k in text for k in self.GAMEPLAY_KEYWORDS):
+            return 1
+
+        return 0
+
+    def _score_to_priority(self, score: int) -> int:
+        """
+        Conversão oficial score → prioridade
+        """
+        if score >= 7:
+            return 1  # Vermelho
+        if score >= 5:
+            return 2  # Amarelo
+        if score >= 3:
+            return 3  # Verde
+        if score == 2:
+            return 4  # Azul
+        if score <= 1:
+            return 0  # Cinza
+
+        return 4
