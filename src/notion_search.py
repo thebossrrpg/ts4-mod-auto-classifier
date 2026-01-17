@@ -246,23 +246,28 @@ class NotionSearcher:
                     logger.warning(f"Erro ao processar página individual: {inner_e}")
                     continue
 
-            return results  # ← Agora fora do loop e do try principal
+            return results  # ← agora fora do for loop e do try principal
 
         except Exception as e:
             logger.error(f"Erro na busca fuzzy por '{query}': {e}")
-            return []  # Retorna vazio em caso de falha total
+            return []
 
-            # Aqui começa o próximo método, sem indentação extra
-            def search(self, query: str) -> List[Dict]:
-                """
-                Busca inteligente que decide automaticamente o tipo de busca.
-                """
-        if query.startswith(("http://", "https://")):
+    def search(self, query: str) -> List[Dict]:
+        """
+        Busca inteligente que decide automaticamente o tipo de busca.
+
+        Args:
+            query: Pode ser URL, nome do mod ou criador
+
+        Returns:
+            Lista de resultados encontrados
+        """
+        if query.startswith("http://") or query.startswith("https://"):
             page_id = self.search_by_url(query)
             if page_id:
                 try:
                     page = self.client.pages.retrieve(page_id)
-                    properties = page.get("properties", {})
+                    properties = page["properties"]
 
                     name = (
                         properties.get("Nome", {})
@@ -294,8 +299,12 @@ class NotionSearcher:
                             "priority": priority,
                         }
                     ]
+
                 except Exception as e:
-                    logger.error(f"Erro ao recuperar página {page_id}: {e}")
+                    logger.error(
+                        f"Erro ao recuperar detalhes da página {page_id}: {str(e)}"
+                    )
                     return []
 
+        # Se não for URL ou falhou, busca fuzzy
         return self.fuzzy_search(query)
