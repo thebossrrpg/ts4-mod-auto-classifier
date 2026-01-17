@@ -22,17 +22,22 @@ st.markdown("Sistema completo de classificação automática de mods do The Sims
 with st.sidebar:
     st.header("⚙️ Configurações")
     
-    notion_api_key = st.text_input(
-        "Notion API Key",
-        type="password",
-        help="Sua chave de API do Notion"
-    )
-    
-    database_id = st.text_input(
-        "Database ID",
-        help="ID do banco de dados do Notion"
-    )
-    
+        # Carrega credenciais dos secrets (Streamlit Cloud)
+    try:
+        notion_api_key = st.secrets["NOTION_API_KEY"]
+        database_id = st.secrets["NOTION_DB_ID"]
+    except:
+        # Fallback: permite entrada manual
+        notion_api_key = st.text_input(
+            "Notion API Key",
+            type="password",
+            help="Sua chave de API do Notion"
+        )
+        
+        database_id = st.text_input(
+            "Database ID",
+            help="ID do banco de dados do Notion"
+        )
     st.markdown("---")
     st.markdown("### 📊 Status")
     if notion_api_key and database_id:
