@@ -23,8 +23,8 @@ with st.sidebar:
     st.header("⚙️ Configurações")
     
             # Carrega credenciais dos secrets (fixas)
-    notion_api_key = st.secrets["NOTION_API_KEY"]
-        database_id = st.secrets["NOTION_DB_ID"]
+    notion_api_key = st.secrets["NOTION_API_KE   
+    database_id = st.secrets["NOTION_DB_ID"]
     if notion_api_key and database_id:
         st.success("✅ Configurado")
     else:
