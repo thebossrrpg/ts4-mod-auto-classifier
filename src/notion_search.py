@@ -9,7 +9,6 @@ try:
     from notion_client import Client
 except ImportError:
     Client = None
-
 logger = logging.getLogger(__name__)
 
 class NotionSearcher:
@@ -27,7 +26,6 @@ class NotionSearcher:
             raise ImportError(
                 "notion-client não instalado. Instale com: pip install notion-client"
             )
-
         self.client = Client(auth=api_key)
         self.database_id = database_id
 
@@ -54,28 +52,30 @@ class NotionSearcher:
             path = parsed.path.rstrip("/")
 
             # Remove query params se houver
+
             if "?" in path:
                 path = path.split("?")[0]
-
             # Pega a última parte do path
+
             page_segment = path.split("/")[-1]
 
             # O ID é a última parte após o último hífen
             # Formato: Page-Name-abc123def456
+
             if "-" in page_segment:
                 page_id = page_segment.split("-")[-1]
                 # Remove hífens do ID (Notion aceita com ou sem)
+
                 page_id = page_id.replace("-", "")
 
                 # Valida se é um ID válido (32 caracteres hex)
+
                 if len(page_id) == 32 and all(
                     c in "0123456789abcdefABCDEF" for c in page_id
                 ):
                     return page_id
-
             logger.warning(f"Não foi possível extrair page_id de: {notion_url}")
             return None
-
         except Exception as e:
             logger.error(f"Erro ao extrair page_id: {e}")
             return None
@@ -93,6 +93,7 @@ class NotionSearcher:
         try:
             parsed = urlparse(url)
             # Remove query params e fragment
+
             normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
             return normalized.rstrip("/")
         except:
@@ -112,6 +113,7 @@ class NotionSearcher:
             normalized_url = self.normalize_url(mod_url)
 
             # Busca exata por URL
+
             response = self.client.databases.query(
                 database_id=self.database_id,
                 filter={"property": "Link", "url": {"equals": normalized_url}},
@@ -121,9 +123,9 @@ class NotionSearcher:
                 page_id = response["results"][0]["id"]
                 logger.info(f"Página encontrada por URL: {page_id}")
                 return page_id
-
             # Se não encontrou, tenta busca parcial
             # (útil se a URL foi salva com query params)
+
             response = self.client.databases.query(
                 database_id=self.database_id,
                 filter={
@@ -136,10 +138,8 @@ class NotionSearcher:
                 page_id = response["results"][0]["id"]
                 logger.info(f"Página encontrada por busca parcial: {page_id}")
                 return page_id
-
             logger.info(f"Nenhuma página encontrada para URL: {mod_url}")
             return None
-
         except Exception as e:
             logger.error(f"Erro na busca por URL: {e}")
             return None
@@ -161,26 +161,25 @@ class NotionSearcher:
             filters = []
 
             # Filtro por nome
+
             if name:
                 filters.append({"property": "Nome", "title": {"contains": name}})
-
             # Filtro por criador
+
             if creator:
                 filters.append(
                     {"property": "Criador", "rich_text": {"contains": creator}}
                 )
-
             # Monta query
+
             query_filter = None
             if len(filters) == 1:
                 query_filter = filters[0]
             elif len(filters) > 1:
                 query_filter = {"and": filters}
-
             if not query_filter:
                 logger.warning("Busca sem filtros")
                 return None
-
             response = self.client.databases.query(
                 database_id=self.database_id, filter=query_filter
             )
@@ -189,10 +188,8 @@ class NotionSearcher:
                 page_id = response["results"][0]["id"]
                 logger.info(f"Página encontrada por nome/criador: {page_id}")
                 return page_id
-
             logger.info(f"Nenhuma página encontrada para: {name} / {creator}")
             return None
-
         except Exception as e:
             logger.error(f"Erro na busca por nome/criador: {e}")
             return None
@@ -213,6 +210,7 @@ class NotionSearcher:
         """
         try:
             # Busca por nome
+
             response = self.client.databases.query(
                 database_id=self.database_id,
                 filter={"property": "Nome", "title": {"contains": query}},
@@ -223,20 +221,18 @@ class NotionSearcher:
             for page in response["results"]:
                 try:
                     # Extrai informações da página
+
                     properties = page["properties"]
 
                     name = ""
                     if "Nome" in properties and properties["Nome"]["title"]:
                         name = properties["Nome"]["title"][0]["plain_text"]
-
                     creator = ""
                     if "Criador" in properties and properties["Criador"]["rich_text"]:
                         creator = properties["Criador"]["rich_text"][0]["plain_text"]
-
                     url = ""
                     if "Link" in properties and properties["Link"]["url"]:
                         url = properties["Link"]["url"]
-
                     results.append(
                         {
                             "page_id": page["id"],
@@ -248,9 +244,7 @@ class NotionSearcher:
                 except Exception as inner_e:
                     logger.warning(f"Erro ao processar página individual: {inner_e}")
                     continue
-
             return results
-
         except Exception as e:
             logger.error(f"Erro na busca fuzzy por '{query}': {e}")
             return []
@@ -305,12 +299,11 @@ class NotionSearcher:
                             "priority": priority,
                         }
                     ]
-
                 except Exception as e:
                     logger.error(
                         f"Erro ao recuperar detalhes da página {page_id}: {str(e)}"
                     )
                     return []
-
         # Se não for URL ou falhou, busca fuzzy
+
         return self.fuzzy_search(query)
