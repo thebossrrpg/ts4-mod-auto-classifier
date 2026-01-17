@@ -311,9 +311,6 @@ class NotionSearcher:
                         'folder': folder,
                         'priority': priority
                     }]
-                except Exception as e:
-                    logger.error(f"Erro ao buscar detalhes da página: {e}")
-                    return []
         
         # Caso contrário, faz busca fuzzy por nome
         return self.fuzzy_search(query)
