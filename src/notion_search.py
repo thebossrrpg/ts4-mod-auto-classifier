@@ -263,6 +263,60 @@ class NotionSearcher:
                     continue
             
             return results
+
+            def search(self, query: str) -> List[Dict]:
+        """
+        Busca inteligente que decide automaticamente o tipo de busca.
+        
+        Args:
+            query: Pode ser URL, nome do mod ou criador
+        
+        Returns:
+            Lista de resultados encontrados
+        """
+        # Se parece uma URL, tenta busca por URL
+        if query.startswith('http://') or query.startswith('https://'):
+            page_id = self.search_by_url(query)
+            if page_id:
+                # Busca detalhes da página encontrada
+                try:
+                    page = self.client.pages.retrieve(page_id)
+                    properties = page['properties']
+                    
+                    name = ""
+                    if 'Nome' in properties and properties['Nome']['title']:
+                        name = properties['Nome']['title'][0]['plain_text']
+                    
+                    creator = ""
+                    if 'Criador' in properties and properties['Criador']['rich_text']:
+                        creator = properties['Criador']['rich_text'][0]['plain_text']
+                    
+                    url = ""
+                    if 'Link' in properties and properties['Link']['url']:
+                        url = properties['Link']['url']
+                    
+                    folder = ""
+                    if 'Pasta' in properties and properties['Pasta']['select']:
+                        folder = properties['Pasta']['select']['name']
+                    
+                    priority = ""
+                    if 'Prioridade' in properties and properties['Prioridade']['select']:
+                        priority = properties['Prioridade']['select']['name']
+                    
+                    return [{
+                        'page_id': page_id,
+                        'name': name,
+                        'creator': creator,
+                        'url': url,
+                        'folder': folder,
+                        'priority': priority
+                    }]
+                except Exception as e:
+                    logger.error(f"Erro ao buscar detalhes da página: {e}")
+                    return []
+        
+        # Caso contrário, faz busca fuzzy por nome
+        return self.fuzzy_search(query)
             
         except Exception as e:
             logger.error(f"Erro na busca fuzzy: {e}")
