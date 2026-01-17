@@ -13,7 +13,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class NotionSearch:
+class NotionSearcher:
     """Busca inteligente de páginas de mods no Notion."""
     
     def __init__(self, api_key: str, database_id: str):
