@@ -252,47 +252,37 @@ class NotionSearcher:
             logger.error(f"Erro na busca fuzzy por '{query}': {e}")
             return []  # Retorna vazio em caso de falha total
 
-        # Aqui começa o próximo método, sem indentação extra
-        def search(self, query: str) -> List[Dict]:
-            """
-            Busca inteligente que decide automaticamente o tipo de busca.
-
-            Args:
-                query: Pode ser URL, nome do mod ou criador
-
-            Returns:
-                Lista de resultados encontrados
-            """
-        if query.startswith("http://") or query.startswith("https://"):
+            # Aqui começa o próximo método, sem indentação extra
+            def search(self, query: str) -> List[Dict]:
+                """
+                Busca inteligente que decide automaticamente o tipo de busca.
+                """
+        if query.startswith(("http://", "https://")):
             page_id = self.search_by_url(query)
             if page_id:
                 try:
                     page = self.client.pages.retrieve(page_id)
-                    properties = page["properties"]
+                    properties = page.get("properties", {})
 
-                    name = ""
-                    if "Nome" in properties and properties["Nome"].get("title"):
-                        name = properties["Nome"]["title"][0]["plain_text"]
-
-                    creator = ""
-                    if "Criador" in properties and properties["Criador"].get(
-                        "rich_text"
-                    ):
-                        creator = properties["Criador"]["rich_text"][0]["plain_text"]
-
-                    url = ""
-                    if "Link" in properties and properties["Link"].get("url"):
-                        url = properties["Link"]["url"]
-
-                    folder = ""
-                    if "Pasta" in properties and properties["Pasta"].get("select"):
-                        folder = properties["Pasta"]["select"]["name"]
-
-                    priority = ""
-                    if "Prioridade" in properties and properties["Prioridade"].get(
-                        "select"
-                    ):
-                        priority = properties["Prioridade"]["select"]["name"]
+                    name = (
+                        properties.get("Nome", {})
+                        .get("title", [{}])[0]
+                        .get("plain_text", "")
+                    )
+                    creator = (
+                        properties.get("Criador", {})
+                        .get("rich_text", [{}])[0]
+                        .get("plain_text", "")
+                    )
+                    url = properties.get("Link", {}).get("url", "")
+                    folder = (
+                        properties.get("Pasta", {}).get("select", {}).get("name", "")
+                    )
+                    priority = (
+                        properties.get("Prioridade", {})
+                        .get("select", {})
+                        .get("name", "")
+                    )
 
                     return [
                         {
@@ -304,12 +294,8 @@ class NotionSearcher:
                             "priority": priority,
                         }
                     ]
-
                 except Exception as e:
-                    logger.error(
-                        f"Erro ao recuperar detalhes da página {page_id}: {str(e)}"
-                    )
-                    return []  # Retorna vazio em caso de falha para não quebrar o app
+                    logger.error(f"Erro ao recuperar página {page_id}: {e}")
+                    return []
 
-        # Se não for URL ou falhou na busca exata, usa busca fuzzy
         return self.fuzzy_search(query)
