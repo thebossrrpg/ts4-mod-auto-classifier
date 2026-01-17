@@ -196,18 +196,21 @@ class NotionSearcher:
         except Exception as e:
             logger.error(f"Erro na busca por nome/criador: {e}")
             return None
+    # ──────────────────────────────────────────────────────────────
+    # Agora fuzzy_search no nível correto da classe
+    # ──────────────────────────────────────────────────────────────
 
-        def fuzzy_search(self, query: str, limit: int = 5) -> List[Dict]:
-            """
-            Busca fuzzy para sugestões.
+    def fuzzy_search(self, query: str, limit: int = 5) -> List[Dict]:
+        """
+        Busca fuzzy para sugestões.
 
-            Args:
-                query: Termo de busca
-                limit: Número máximo de resultados
+        Args:
+            query: Termo de busca
+            limit: Número máximo de resultados
 
-            Returns:
-                Lista de páginas encontradas
-            """
+        Returns:
+            Lista de páginas encontradas
+        """
         try:
             # Busca por nome
             response = self.client.databases.query(
@@ -246,17 +249,14 @@ class NotionSearcher:
                     logger.warning(f"Erro ao processar página individual: {inner_e}")
                     continue
 
-            return results  # ← agora fora do for loop e do try principal
+            return results
 
         except Exception as e:
             logger.error(f"Erro na busca fuzzy por '{query}': {e}")
             return []
-
-            return results  # ← agora fora do for loop e do try principal
-
-        except Exception as e:
-            logger.error(f"Erro na busca fuzzy por '{query}': {e}")
-            return []
+    # ──────────────────────────────────────────────────────────────
+    # Método search (já está no nível correto)
+    # ──────────────────────────────────────────────────────────────
 
     def search(self, query: str) -> List[Dict]:
         """
