@@ -1,8 +1,10 @@
-"""Cliente Notion completo para operações CRUD."""
+"""
+Busca inteligente no Notion para mods do The Sims 4.
+"""
 
 import logging
-from typing import Dict
-from tenacity import retry, stop_after_attempt, wait_exponential
+from typing import Optional, List, Dict
+from urllib.parse import urlparse, parse_qs
 
 try:
     from notion_client import Client
@@ -12,140 +14,105 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class NotionClient:
-    """Cliente Notion com operações completas."""
+class NotionSearcher:
+    """Busca inteligente de páginas no Notion."""
 
     def __init__(self, api_key: str, database_id: str):
-        """
-        Inicializa cliente Notion.
-
-        Args:
-            api_key: Notion API key
-            database_id: ID da database
-        """
         if Client is None:
             raise ImportError("notion-client não instalado")
 
         self.client = Client(auth=api_key)
         self.database_id = database_id
-        self._schema = None
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def get_database_schema(self) -> Dict:
-        """Obtém schema da database."""
-        if self._schema is None:
-            self._schema = self.client.databases.retrieve(self.database_id)
-        return self._schema
+    # -----------------------------
+    # Helpers
+    # -----------------------------
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def get_page(self, page_id: str) -> Dict:
-        """Obtém página do Notion."""
+    def normalize_url(self, url: str) -> str:
+        parsed = urlparse(url)
+        netloc = parsed.netloc.lower().replace("www.", "")
+        path = parsed.path.rstrip("/")
+        return f"{netloc}{path}"
+
+    # -----------------------------
+    # Searches
+    # -----------------------------
+
+    def search_by_url(self, mod_url: str) -> Optional[str]:
+        normalized = self.normalize_url(mod_url)
+
         try:
-            return self.client.pages.retrieve(page_id)
-        except Exception as e:
-            logger.error(f"Erro ao obter página {page_id}: {e}")
-            raise
-
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def create_page(self, properties: Dict) -> str:
-        """
-        Cria nova página no Notion.
-
-        Args:
-            properties: Propriedades da página
-
-        Returns:
-            Page ID da página criada
-        """
-        try:
-            notion_properties = self._build_properties(properties)
-
-            response = self.client.pages.create(
-                parent={"database_id": self.database_id},
-                properties=notion_properties
+            response = self.client.databases.query(
+                database_id=self.database_id,
+                filter={
+                    "property": "Link",
+                    "url": {"contains": normalized}
+                }
             )
 
-            page_id = response["id"]
-            logger.info(f"Página criada: {page_id}")
-            return page_id
+            results = response.get("results", [])
+            if results:
+                return results[0]["id"]
+
+            return None
 
         except Exception as e:
-            logger.error(f"Erro ao criar página: {e}")
-            raise
+            logger.error(f"Erro na busca por URL {mod_url}: {e}")
+            return None
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def update_page(self, page_id: str, properties: Dict):
-        """
-        Atualiza página existente.
-
-        Args:
-            page_id: ID da página
-            properties: Propriedades a atualizar
-        """
+    def fuzzy_search(self, query: str, limit: int = 5) -> List[Dict]:
         try:
-            notion_properties = self._build_properties(properties)
-
-            self.client.pages.update(
-                page_id=page_id,
-                properties=notion_properties
+            response = self.client.databases.query(
+                database_id=self.database_id,
+                filter={
+                    "property": "Nome",
+                    "title": {"contains": query}
+                },
+                page_size=limit
             )
 
-            logger.info(f"Página atualizada: {page_id}")
+            results = []
+            for page in response.get("results", []):
+                props = page["properties"]
+
+                def text(prop, kind):
+                    return (
+                        prop.get(kind, [{}])[0].get("plain_text", "")
+                        if prop and prop.get(kind)
+                        else ""
+                    )
+
+                results.append({
+                    "page_id": page["id"],
+                    "name": text(props.get("Nome"), "title"),
+                    "creator": text(props.get("Criador"), "rich_text"),
+                    "url": props.get("Link", {}).get("url", ""),
+                    "folder": props.get("Pasta", {}).get("select", {}).get("name", ""),
+                    "priority": props.get("Prioridade", {}).get("select", {}).get("name", "")
+                })
+
+            return results
 
         except Exception as e:
-            logger.error(f"Erro ao atualizar página: {e}")
-            raise
+            logger.error(f"Erro na busca fuzzy por '{query}': {e}")
+            return []
 
-    def _build_properties(self, props: Dict) -> Dict:
-        """
-        Constrói propriedades no formato Notion.
+    def search(self, query: str) -> List[Dict]:
+        if query.startswith("http"):
+            page_id = self.search_by_url(query)
+            if not page_id:
+                return []
 
-        Args:
-            props: Dicionário simples com as propriedades
+            page = self.client.pages.retrieve(page_id)
+            props = page["properties"]
 
-        Returns:
-            Propriedades no formato Notion API
-        """
-        notion_props = {}
+            return [{
+                "page_id": page_id,
+                "name": props["Nome"]["title"][0]["plain_text"] if props["Nome"]["title"] else "",
+                "creator": props["Criador"]["rich_text"][0]["plain_text"] if props["Criador"]["rich_text"] else "",
+                "url": props["Link"]["url"],
+                "folder": props["Pasta"]["select"]["name"] if props["Pasta"]["select"] else "",
+                "priority": props["Prioridade"]["select"]["name"] if props["Prioridade"]["select"] else "",
+            }]
 
-        # Nome (Title)
-        if props.get("name"):
-            notion_props["Nome"] = {
-                "title": [{"text": {"content": props["name"]}}]
-            }
-
-        # Criador (Rich Text)
-        if props.get("creator"):
-            notion_props["Criador"] = {
-                "rich_text": [{"text": {"content": props["creator"]}}]
-            }
-
-        # Link (URL)
-        if props.get("url"):
-            notion_props["Link"] = {
-                "url": props["url"]
-            }
-
-        # Prioridade (Select com opções numéricas)
-        if "priority" in props and props["priority"] is not None:
-            notion_props["Prioridade"] = {
-                "select": {
-                    "name": str(props["priority"])
-                }
-            }
-
-        # Pasta (Select)
-        if props.get("folder"):
-            notion_props["Pasta"] = {
-                "select": {
-                    "name": props["folder"]
-                }
-            }
-
-        # Notes (Rich Text)
-        if props.get("notes"):
-            notion_props["Notes"] = {
-                "rich_text": [{"text": {"content": props["notes"]}}]
-            }
-
-        return notion_props
+        return self.fuzzy_search(query)
