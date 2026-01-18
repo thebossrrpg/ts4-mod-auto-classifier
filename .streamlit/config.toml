@@ -7,3 +7,6 @@ textColor = "#FAFAFA"
 [server]
 headless = true
 port = 8501
+
+
+# Force rebuild - Clean container cache (2026-01-18 01:00)
