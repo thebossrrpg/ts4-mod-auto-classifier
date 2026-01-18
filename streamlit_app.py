@@ -57,7 +57,7 @@ with tab1:
         else:
             with st.spinner("Buscando no Notion..."):
                 try:
-                    searcher = NotionSearcher(notion_api_key, database_id)
+                    searcher = NotionClient(notion_api_key, database_id)
                     results = searcher.search(search_query)
 
                     if results:
@@ -128,7 +128,7 @@ with tab2:
                         if st.button("💾 Salvar no Notion", type="primary"):
                             with st.spinner("Salvando..."):
                                 try:
-                                    searcher = NotionSearcher(
+                                    searcher = NotionClient(
                                         notion_api_key, database_id
                                     )
 
