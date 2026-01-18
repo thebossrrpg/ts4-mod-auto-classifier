@@ -1,6 +1,5 @@
 """
 Busca inteligente no Notion para mods do The Sims 4.
-Responsabilidade EXCLUSIVA: BUSCAR.
 """
 
 import logging
@@ -16,8 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class NotionSearcher:
-    """Busca inteligente de páginas no Notion."""
-
     def __init__(self, api_key: str, database_id: str):
         if Client is None:
             raise ImportError("notion-client não instalado")
@@ -29,21 +26,17 @@ class NotionSearcher:
     # Helpers
     # -----------------------------
 
-    @staticmethod
-    def _safe_text(prop: Dict, kind: str) -> str:
-        if not prop:
-            return ""
-        items = prop.get(kind, [])
-        if not items:
-            return ""
-        return items[0].get("plain_text", "")
-
-    @staticmethod
-    def normalize_url(url: str) -> str:
+    def normalize_url(self, url: str) -> str:
         parsed = urlparse(url)
         netloc = parsed.netloc.lower().replace("www.", "")
         path = parsed.path.rstrip("/")
         return f"{netloc}{path}"
+
+    def _safe_text(self, prop: Dict, key: str) -> str:
+        try:
+            return prop.get(key, [])[0].get("plain_text", "")
+        except Exception:
+            return ""
 
     # -----------------------------
     # Searches
@@ -79,49 +72,41 @@ class NotionSearcher:
                 page_size=limit
             )
 
-            output: List[Dict] = []
-
+            results = []
             for page in response.get("results", []):
-                props = page.get("properties", {})
+                props = page["properties"]
 
-                output.append({
+                results.append({
                     "page_id": page["id"],
-                    "name": self._safe_text(props.get("Nome"), "title"),
-                    "creator": self._safe_text(props.get("Criador"), "rich_text"),
+                    "name": self._safe_text(props.get("Nome", {}), "title"),
+                    "creator": self._safe_text(props.get("Criador", {}), "rich_text"),
                     "url": props.get("Link", {}).get("url", ""),
                     "folder": props.get("Pasta", {}).get("select", {}).get("name", ""),
                     "priority": props.get("Prioridade", {}).get("select", {}).get("name", "")
                 })
 
-            return output
+            return results
 
         except Exception as e:
-            logger.error(f"Erro na busca fuzzy por '{query}': {e}")
+            logger.error(f"Erro na busca fuzzy: {e}")
             return []
 
     def search(self, query: str) -> List[Dict]:
-        # URL → busca direta
         if query.startswith("http"):
             page_id = self.search_by_url(query)
             if not page_id:
                 return []
 
-            try:
-                page = self.client.pages.retrieve(page_id)
-                props = page.get("properties", {})
+            page = self.client.pages.retrieve(page_id)
+            props = page["properties"]
 
-                return [{
-                    "page_id": page_id,
-                    "name": self._safe_text(props.get("Nome"), "title"),
-                    "creator": self._safe_text(props.get("Criador"), "rich_text"),
-                    "url": props.get("Link", {}).get("url", ""),
-                    "folder": props.get("Pasta", {}).get("select", {}).get("name", ""),
-                    "priority": props.get("Prioridade", {}).get("select", {}).get("name", "")
-                }]
+            return [{
+                "page_id": page_id,
+                "name": self._safe_text(props.get("Nome", {}), "title"),
+                "creator": self._safe_text(props.get("Criador", {}), "rich_text"),
+                "url": props.get("Link", {}).get("url", ""),
+                "folder": props.get("Pasta", {}).get("select", {}).get("name", ""),
+                "priority": props.get("Prioridade", {}).get("select", {}).get("name", "")
+            }]
 
-            except Exception as e:
-                logger.error(f"Erro ao recuperar página {page_id}: {e}")
-                return []
-
-        # Texto → fuzzy
         return self.fuzzy_search(query)
