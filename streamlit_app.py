@@ -1,7 +1,7 @@
 # Deploy fix: Added __init__.py for module imports
 import streamlit as st
 
-from notion_search import NotionSearcher
+from notion_search import NotionClient
 from notion_db_client import NotionClient
 from mod_classifier import ModClassifier
 from mod_extractor import ModExtractor
