@@ -1,6 +1,5 @@
 """
-Cliente Notion para operações CRUD.
-Responsabilidade EXCLUSIVA: CRIAR / ATUALIZAR / NOTES.
+Cliente Notion para operações CRUD + Notes.
 """
 
 import logging
@@ -15,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class NotionClient:
-    """Cliente Notion com operações CRUD."""
-
     def __init__(self, api_key: str, database_id: str):
         if Client is None:
             raise ImportError("notion-client não instalado")
@@ -50,13 +47,13 @@ class NotionClient:
 
     def append_to_notes(self, page_id: str, extra_line: str):
         page = self.get_page(page_id)
-        props = page.get("properties", {})
+        props = page["properties"]
 
         existing = ""
-        if props.get("Notes") and props["Notes"].get("rich_text"):
-            existing = props["Notes"]["rich_text"][0].get("plain_text", "")
+        if props.get("Notes") and props["Notes"]["rich_text"]:
+            existing = props["Notes"]["rich_text"][0]["plain_text"]
 
-        new_notes = f"{existing}\n{extra_line}".strip() if existing else extra_line
+        new_notes = f"{existing}\n{extra_line}".strip()
 
         self.client.pages.update(
             page_id=page_id,
@@ -72,7 +69,7 @@ class NotionClient:
     # -----------------------------
 
     def _build_properties(self, props: Dict) -> Dict:
-        notion_props: Dict = {}
+        notion_props = {}
 
         if props.get("name"):
             notion_props["Nome"] = {
