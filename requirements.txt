@@ -17,3 +17,5 @@ html2text>=2020.1.16
 # Utils
 pydantic>=2.5.0
 tenacity>=8.2.3
+
+# Force rebuild: Fix module imports after src removal
