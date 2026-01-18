@@ -1,4 +1,6 @@
-"""TS4 Mod Auto-Classifier - Aplicação Streamlit"""
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 from src.notion_search import NotionSearcher
