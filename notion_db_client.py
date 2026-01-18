@@ -1,9 +1,8 @@
-"""
-Cliente Notion para operações CRUD + Notes.
-"""
+"""Cliente Notion completo para operações CRUD."""
 
 import logging
 from typing import Dict
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 try:
     from notion_client import Client
@@ -14,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class NotionClient:
+    """Cliente Notion com operações completas."""
+
     def __init__(self, api_key: str, database_id: str):
         if Client is None:
             raise ImportError("notion-client não instalado")
@@ -53,7 +54,11 @@ class NotionClient:
         if props.get("Notes") and props["Notes"]["rich_text"]:
             existing = props["Notes"]["rich_text"][0]["plain_text"]
 
-        new_notes = f"{existing}\n{extra_line}".strip()
+        new_notes = (
+            f"{existing}\n{extra_line}".strip()
+            if existing
+            else extra_line
+        )
 
         self.client.pages.update(
             page_id=page_id,
