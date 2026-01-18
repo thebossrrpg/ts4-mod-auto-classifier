@@ -1,8 +1,7 @@
-import streamlit as st
-from src.notion_search import NotionSearcher
-from src.notion_client import NotionClient
-from src.mod_classifier import ModClassifier
-from src.mod_extractor import ModExtractor
+from notion_search import NotionSearcher
+from notion_client import NotionClient
+from mod_classifier import ModClassifier
+from mod_extractor import ModExtractor
 
 # Configuração da página
 st.set_page_config(
