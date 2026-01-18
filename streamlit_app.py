@@ -1,7 +1,3 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 import streamlit as st
 from src.notion_search import NotionSearcher
 from src.notion_client import NotionClient
