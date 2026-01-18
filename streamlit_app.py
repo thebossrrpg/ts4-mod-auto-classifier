@@ -6,8 +6,6 @@ from notion_client import NotionClient
 from mod_classifier import ModClassifier
 from mod_extractor import ModExtractor
 
-st.write("DEBUG:", NotionSearcher)
-
 # Configuração da página
 st.set_page_config(
     page_title="TS4 Mod Auto-Classifier",
