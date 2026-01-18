@@ -2,7 +2,7 @@
 import streamlit as st
 
 from notion_search import NotionSearcher
-from notion_client import NotionClient
+from notion_db_client import NotionClient
 from mod_classifier import ModClassifier
 from mod_extractor import ModExtractor
 
